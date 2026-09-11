@@ -43,7 +43,14 @@ permissions:
 jobs:
   preflight:
     name: Pre-flight checks
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    # Forks must never cut a release. Without the repository check, a manual run
+    # on a fork decides it is time for a dev prerelease, tags the fork, and the
+    # tag push then starts the whole publish pipeline -- which cannot finish,
+    # because it wants credentials only the upstream repository has. A fork
+    # dispatching this workflow wants the build matrices, nothing else.
+    if: |
+      github.repository == 'ActivityWatch/activitywatch' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     concurrency:
       group: dev-release
@@ -212,7 +219,9 @@ jobs:
   create-tag:
     name: Create dev release tag
     needs: preflight
-    if: needs.preflight.outputs.should_release == 'true'
+    if: |
+      github.repository == 'ActivityWatch/activitywatch' &&
+      needs.preflight.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     concurrency:
       group: dev-release
