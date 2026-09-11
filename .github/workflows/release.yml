@@ -28,6 +28,16 @@ on:
           - standard
           - research
         default: standard
+      platforms:
+        description: 'Which desktop platforms to build (manual runs only)'
+        required: false
+        type: choice
+        options:
+          - all
+          - windows
+          - linux
+          - windows+linux
+        default: all
   push:
     branches: [master]
     tags:
@@ -316,7 +326,15 @@ jobs:
       matrix:
         # Build Linux Qt/AppImage artifacts on the oldest supported runner to
         # keep the bundled glibc baseline compatible with older distributions.
-        os: [ubuntu-22.04, windows-latest, macos-latest, macos-15-intel]
+        #
+        # A manual run may narrow this. Every automatic trigger -- push, pull
+        # request, tag, schedule -- still builds all four, because a release must
+        # not be able to ship a platform nobody compiled. The narrowing exists for
+        # the case where someone wants one installer out of a fork and has no use
+        # for, or no way to check, the other three: two macOS legs are twenty
+        # minutes of waiting apiece for an artifact that cannot be tested by
+        # someone without a Mac.
+        os: ${{ fromJSON(github.event_name != 'workflow_dispatch' && '["ubuntu-22.04","windows-latest","macos-latest","macos-15-intel"]' || inputs.platforms == 'windows' && '["windows-latest"]' || inputs.platforms == 'linux' && '["ubuntu-22.04"]' || inputs.platforms == 'windows+linux' && '["ubuntu-22.04","windows-latest"]' || '["ubuntu-22.04","windows-latest","macos-latest","macos-15-intel"]') }}
         python_version: [3.9]
         node_version: [22]
         skip_rust: [false]
@@ -333,7 +351,7 @@ jobs:
         # research artifacts to the standard release.
         research: [false]
         include:
-          - os: ubuntu-22.04
+          - os: ${{ github.event_name == 'workflow_dispatch' && inputs.platforms == 'windows' && 'windows-latest' || 'ubuntu-22.04' }}
             python_version: 3.9
             node_version: 22
             skip_rust: false
@@ -893,7 +911,12 @@ jobs:
 
   build-tauri:
     name: Build Tauri artifacts
-    if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    # A manual run that narrows `platforms` is after one Qt installer, and Tauri is a different
+    # desktop app with its own aw-server-rust pin -- four more runners that answer a question
+    # nobody asked. Every automatic trigger still builds it.
+    if: |
+      github.event_name == 'push' || github.event_name == 'pull_request' ||
+      (github.event_name == 'workflow_dispatch' && inputs.platforms == 'all')
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.experimental }}
     env:
