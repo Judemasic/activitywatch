@@ -365,9 +365,15 @@ jobs:
           submodules: 'recursive'
           fetch-depth: 0
 
+      # `beta` is this fork's trunk, so it builds optimised like upstream's `master`.
+      # Without it every artefact off this branch is a DEBUG build: the Makefile reads
+      # RELEASE and falls back to `target/debug`, and the aw-server-rust that ships is
+      # ~4x slower (1.29s against 0.31s for one combined day, measured 2026-09-12) and
+      # 12MB larger. It also flips `cfg!(debug_assertions)`, so the server defaults to
+      # the *testing* profile and a different data directory. See roadmap 4.10/4.12.
       - name: Set RELEASE
         run: |
-          echo "RELEASE=${{ startsWith(github.ref_name, 'v') || github.ref_name == 'master' }}" >> "$GITHUB_ENV"
+          echo "RELEASE=${{ startsWith(github.ref_name, 'v') || github.ref_name == 'master' || github.ref_name == 'beta' }}" >> "$GITHUB_ENV"
 
       - name: Set tag metadata
         if: startsWith(github.ref, 'refs/tags/v')
@@ -679,9 +685,15 @@ jobs:
       - name: Configure git safe directory
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
+      # `beta` is this fork's trunk, so it builds optimised like upstream's `master`.
+      # Without it every artefact off this branch is a DEBUG build: the Makefile reads
+      # RELEASE and falls back to `target/debug`, and the aw-server-rust that ships is
+      # ~4x slower (1.29s against 0.31s for one combined day, measured 2026-09-12) and
+      # 12MB larger. It also flips `cfg!(debug_assertions)`, so the server defaults to
+      # the *testing* profile and a different data directory. See roadmap 4.10/4.12.
       - name: Set RELEASE
         run: |
-          echo "RELEASE=${{ startsWith(github.ref_name, 'v') || github.ref_name == 'master' }}" >> "$GITHUB_ENV"
+          echo "RELEASE=${{ startsWith(github.ref_name, 'v') || github.ref_name == 'master' || github.ref_name == 'beta' }}" >> "$GITHUB_ENV"
 
       - name: Set tag metadata
         if: startsWith(github.ref, 'refs/tags/v')
@@ -972,9 +984,10 @@ jobs:
           submodules: "recursive"
           fetch-depth: 0
 
+      # Same as the Qt jobs above: `beta` is this fork's trunk and must build optimised.
       - name: Set environment variables
         run: |
-          echo "RELEASE=${{ startsWith(github.ref_name, 'v') || github.ref_name == 'master' }}" >> "$GITHUB_ENV"
+          echo "RELEASE=${{ startsWith(github.ref_name, 'v') || github.ref_name == 'master' || github.ref_name == 'beta' }}" >> "$GITHUB_ENV"
           echo "TAURI_BUILD=true" >> "$GITHUB_ENV"
 
       - name: Set tag metadata
