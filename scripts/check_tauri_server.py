@@ -45,10 +45,11 @@ def read_locked_server(cargo_lock: Path) -> Tuple[str, str]:
     ):
         fields = dict(FIELD_RE.findall(block))
         source = fields.get("source", "")
-        if (
-            fields.get("name") == "aw-server"
-            and "ActivityWatch/aw-server-rust" in source
-        ):
+        # Any aw-server-rust remote, not upstream's alone: what this check is for is that the
+        # two halves bundle the *same* revision, and a fork building its own branch satisfies
+        # that exactly as well. Pinned to the upstream URL, it read a fork's lock as having no
+        # aw-server at all and failed with "found 0".
+        if fields.get("name") == "aw-server" and "aw-server-rust" in source:
             revision = REVISION_RE.search(source)
             if not revision:
                 raise ValueError(
